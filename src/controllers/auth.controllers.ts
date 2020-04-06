@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { matchPassword } from '../libs/bcrypt';
 import { createToken } from '../libs/createToken';
 import ModelUser from '../models/User';
+import { MaysPrimera } from '../helpers';
 
 export const signUp = async (
   req: Request,
@@ -15,12 +16,14 @@ export const signUp = async (
     email: req.body.email.toLowerCase(),
     password: req.body.password,
     image: req.body.image,
-    role: req.body.role,
   };
 
   const userEmail = await ModelUser.findOne({ email: user.email });
   if (userEmail) {
-    return res.status(400).json({ msg: 'The User already Exists' });
+    return res.status(400).json({
+      status: 'error',
+      msg: 'The User already Exists',
+    });
   }
 
   if (user.sex == 'm') {
@@ -33,6 +36,7 @@ export const signUp = async (
   await newUser.save();
 
   const data = {
+    _id: newUser.id,
     name: newUser.name,
     surname: newUser.surname,
     email: newUser.email,
@@ -40,7 +44,9 @@ export const signUp = async (
     role: newUser.role,
     token: createToken(newUser),
   };
-  return res.status(201).json({ data });
+  data.name = MaysPrimera(data.name);
+  data.surname = MaysPrimera(data.surname);
+  return res.status(201).json(data);
 };
 
 export const signIn = async (
@@ -49,12 +55,16 @@ export const signIn = async (
 ): Promise<Response> => {
   const user = await ModelUser.findOne({ email: req.body.email.toLowerCase() });
   if (!user) {
-    return res.status(400).json({ msg: 'The User does not exists' });
+    return res.status(400).json({
+      status: 'error',
+      msg: 'The email or password are incorrect',
+    });
   }
 
   const isMatch = await matchPassword(req.body.password, user.password);
   if (isMatch) {
     const data = {
+      _id: user.id,
       name: user.name,
       surname: user.surname,
       email: user.email,
@@ -62,10 +72,13 @@ export const signIn = async (
       role: user.role,
       token: createToken(user),
     };
-    return res.status(200).json({ data });
+    data.name = MaysPrimera(data.name);
+    data.surname = MaysPrimera(data.surname);
+    return res.status(200).json(data);
   }
 
   return res.status(400).json({
+    status: 'error',
     msg: 'The email or password are incorrect',
   });
 };

@@ -115,25 +115,8 @@ export const getTopicsByUser = async (req: Request, res: Response) => {
   //opciones de paginate
   const options = paginateTopicsUser(numPage);
 
-  // query
-  const query = await ModelTopic.find({ user: userId })
-    .sort([['createdAt', 'descending']])
-    .exec((err, topics) => {
-      if (err) {
-        return res.status(500).json({
-          status: 'error',
-          msg: 'Query Error',
-        });
-      }
-      if (!topics) {
-        return res.status(404).json({
-          status: 'error',
-          msg: 'This user has no topics',
-        });
-      }
-    });
   // configurando el paginate
-  ModelTopic.paginate(query, options, (err, topics) => {
+  ModelTopic.paginate({}, options, (err, topics) => {
     if (err) {
       return res.status(500).json({
         status: 'error',
@@ -210,8 +193,8 @@ export const upadateTopic = async (
         msg: 'topic no found!',
       });
     }
-
-    if (comprobationUser.user !== user.id) {
+    console.log(comprobationUser.user, user.id);
+    if (comprobationUser.user != user.id) {
       return res.status(400).json({
         status: 'error',
         msg: 'You are not authorized to mock this topic',
@@ -256,6 +239,49 @@ export const upadateTopic = async (
   return res.status(400).json({
     status: 'error',
     msg: 'You are not authenticated',
+  });
+};
+
+export const getMyTopics = async (req: Request, res: Response) => {
+  const userReq: UserI = req.user;
+  console.log(userReq.id);
+  const numPage = req.params.numPage;
+  if (!userReq) {
+    return res.status(404).json({
+      status: 'error',
+      msg: 'You do not have permissions to perform this action!',
+    });
+  }
+  if (!numPage) {
+    return res.status(404).json({
+      status: 'error',
+      msg: 'Data missing please',
+    });
+  }
+  //opciones de paginate
+  const options = paginateTopicsUser(numPage);
+
+  // configurando el paginate
+  ModelTopic.paginate({ user: userReq.id }, options, (err, topics) => {
+    if (err) {
+      return res.status(500).json({
+        status: 'error',
+        msg: 'Query Error',
+      });
+    }
+    if (!topics) {
+      return res.status(404).json({
+        status: 'error',
+        msg: 'This user has no topics',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      topics: topics.docs,
+      totalDocs: topics.totalDocs,
+      totalPages: topics.totalPages,
+    });
   });
 };
 

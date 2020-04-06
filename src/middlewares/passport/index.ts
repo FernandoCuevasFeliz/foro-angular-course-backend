@@ -29,15 +29,17 @@ export const autenticate = (
   const pass = passport.authenticate(
     'jwt',
     { session: false },
-    (error, user, info) => {
+    (error, user) => {
       if (error || !user) {
         return res.status(400).json({
           status: 'error',
-          auth: user,
+          msg: 'Error of authenticated',
         });
       }
       req.user = user;
-      // console.log(req.user);
+      // console.log(user);
+
+      // console.log(req.headers.authorization);
       return next();
     }
   )(req, res, next);

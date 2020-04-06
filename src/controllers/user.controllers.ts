@@ -4,6 +4,9 @@ import { isValidObjectId } from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 
+import { MaysPrimera } from '../helpers';
+import { matchPassword, encrypthPassword } from '../libs/bcrypt';
+
 export const updateUser = async (
   req: Request,
   res: Response
@@ -11,11 +14,15 @@ export const updateUser = async (
   const user = {
     name: req.body.name.toLowerCase(),
     surname: req.body.surname.toLowerCase(),
-    email: req.body.email.toLowerCase(),
-    image: req.body.image,
   };
   const userReq: any = req.user;
-  await ModelUser.findByIdAndUpdate(
+  if (!userReq) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'You do not have permissions for this action',
+    });
+  }
+  const userUpdate: UserI = await ModelUser.findByIdAndUpdate(
     { _id: userReq.id },
     user,
     { new: true },
@@ -28,11 +35,97 @@ export const updateUser = async (
       }
     }
   );
-
+  userUpdate.name = MaysPrimera(userUpdate.name);
+  userUpdate.surname = MaysPrimera(userUpdate.surname);
   return res.status(200).json({
     status: 'success',
     msg: 'User Updated!',
+    user: userUpdate,
   });
+};
+
+//update password
+export const updateEmail = async (req: Request, res: Response) => {
+  const userReq: UserI = req.user;
+
+  const user = {
+    email: req.body.email.toLowerCase(),
+  };
+  if (!userReq) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'You do not have permissions for this action',
+    });
+  }
+
+  const userComp = await ModelUser.findOne({ email: user.email });
+
+  if (userComp) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'The email exist',
+    });
+  }
+  const userCompPass: UserI = await ModelUser.findById({ _id: userReq.id });
+  if (!userCompPass) {
+    return res.status(404).json({
+      status: 'error',
+      msg: 'The user no exist',
+    });
+  }
+
+  const isCorrect1 = await matchPassword(
+    req.body.password,
+    userCompPass.password
+  );
+  const isCorrect2 = await matchPassword(
+    req.body.confirm_password,
+    userCompPass.password
+  );
+  if (req.body.password != req.body.confirm_pasword) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'The passwords are not match',
+    });
+  }
+  if (
+    (isCorrect1 && !isCorrect2) ||
+    (!isCorrect1 && isCorrect2) ||
+    (!isCorrect1 && !isCorrect2)
+  ) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'Incorrect Password',
+    });
+  }
+
+  await ModelUser.findByIdAndUpdate(
+    { _id: userReq.id },
+    {
+      email: user.email,
+    },
+    { new: true },
+    (err, emailUpdate) => {
+      if (err) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'Error on server',
+          err,
+        });
+      }
+      if (!emailUpdate) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'User no updated',
+        });
+      }
+      return res.status(200).json({
+        status: 'success',
+        msg: 'User updated',
+        user: emailUpdate,
+      });
+    }
+  );
 };
 
 // getUser
@@ -100,18 +193,32 @@ export const getUsers = async (
 };
 export const updatePassword = async (req: Request, res: Response) => {
   const user: any = req.user;
-  await ModelUser.findByIdAndUpdate({ _id: user.id }, user, (error) => {
-    if (error) {
-      return res.status(400).json({
-        status: 'error',
-        msg: 'An error occurred while saving the password, try again',
-      });
+  const isCorrect1 = await matchPassword(req.body.password, user.password);
+
+  if (!isCorrect1 || req.body.new_password != req.body.confirm_password) {
+    return res.status(400).json({
+      status: 'error',
+      msg: 'Incorrect Password',
+    });
+  }
+  const encrytPass = await encrypthPassword(req.body.new_password);
+  const userPass = await ModelUser.findByIdAndUpdate(
+    { _id: user.id },
+    { password: encrytPass },
+    (error) => {
+      if (error) {
+        return res.status(400).json({
+          status: 'error',
+          msg: 'An error occurred while saving the password, try again',
+        });
+      }
     }
-  });
+  );
 
   return res.status(200).json({
     status: 'success',
-    mgs: 'Password Updated!',
+    msg: 'Password Updated!',
+    user: userPass,
   });
 };
 

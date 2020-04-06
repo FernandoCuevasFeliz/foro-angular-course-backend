@@ -25,7 +25,7 @@ const upload = multer({
     }
     return cb(null, true);
   },
-}).single('avatar');
+}).single('file0');
 
 export const uploadsAvatar = (
   req: Request,

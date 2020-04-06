@@ -1,27 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 
-export const validateDataSignUp = () => {
+export const validateDataPassword = () => {
   return [
-    body('name')
-      .isAlpha()
-      .notEmpty(),
-    body('surname')
-      .isAlpha()
-      .notEmpty(),
-    body('sex')
-      .isString()
-      .notEmpty(),
-    body('email')
-      .isEmail()
-      .isLength({ min: 10 }),
-    body('password')
-      .isLength({ min: 6 })
-      .notEmpty(),
+    body('password').notEmpty(),
+    body('new_password').notEmpty().isLength({ min: 6 }),
+    body('confirm_password').notEmpty().isLength({ min: 6 }),
   ];
 };
 
-export const validateSignUp = (
+export const validatePassword = (
   req: Request,
   res: Response,
   next: NextFunction
